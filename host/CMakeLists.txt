@@ -10,7 +10,7 @@ target_link_libraries(LuaCEFHost
     cef-common
 )
 
-target_compile_features(LuaCEFHost PRIVATE cxx_std_23)
+target_compile_features(LuaCEFHost PRIVATE cxx_std_20)
 
 set_target_properties(LuaCEFHost PROPERTIES
     OUTPUT_NAME "cef-host"

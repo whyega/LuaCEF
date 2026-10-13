@@ -70,5 +70,17 @@ add_custom_command(TARGET DEPLOY POST_BUILD
             "${CEF_ROOT}/Resources"
             "$<TARGET_FILE_DIR:LuaCEFHost>"
 
-    COMMENT "Copying CEF runtime files for $<CONFIG> configuration"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:LuaCEFPlugin>/moonloader/lib"
+
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/luacef/luacef.lua"
+            "$<TARGET_FILE_DIR:LuaCEFPlugin>/moonloader/lib/luacef.lua"
+
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/installer/Install-LuaCEF.ps1"
+            "${CMAKE_SOURCE_DIR}/installer/Install-LuaCEF.cmd"
+            "$<TARGET_FILE_DIR:LuaCEFPlugin>"
+
+    COMMENT "Preparing the LuaCEF runtime, Lua module and installer for $<CONFIG>"
 )

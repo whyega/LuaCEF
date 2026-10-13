@@ -8,6 +8,7 @@
 #include <cef_app.h>
 
 #include "Logger.hpp"
+#include "RuntimePaths.hpp"
 
 Host::~Host()
 {
@@ -49,16 +50,17 @@ void Host::Run()
 
 void Host::InitCef()
 {
-    std::string work_path = std::filesystem::current_path().string() + "\\luacef";
-    std::filesystem::create_directories(work_path + "\\cache");
+    const auto runtimePath = luacef::paths::ExecutableDirectory();
+    const auto dataPath = std::filesystem::current_path() / L"luacef";
+    std::filesystem::create_directories(dataPath / L"cache");
 
     CefSettings settings;
 
-    CefString(&settings.browser_subprocess_path).FromASCII(std::string(work_path + "\\cef-subprocess.exe").c_str());
-    CefString(&settings.log_file) = work_path + "\\luacef.log";
-    CefString(&settings.cache_path).FromASCII(std::string(work_path + "\\cache").c_str());
-    CefString(&settings.locales_dir_path).FromASCII(std::string(work_path + "\\locales").c_str());
-    CefString(&settings.resources_dir_path) = work_path;
+    CefString(&settings.browser_subprocess_path) = (runtimePath / L"cef-subprocess.exe").wstring();
+    CefString(&settings.log_file) = (dataPath / L"luacef.log").wstring();
+    CefString(&settings.cache_path) = (dataPath / L"cache").wstring();
+    CefString(&settings.locales_dir_path) = (runtimePath / L"locales").wstring();
+    CefString(&settings.resources_dir_path) = runtimePath.wstring();
     CefString(&settings.locale).FromASCII("ru");
     CefString(&settings.accept_language_list).FromASCII("en-US,en,ru-RU,ru");
 

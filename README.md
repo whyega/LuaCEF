@@ -263,7 +263,7 @@ view:close()
 
 - Windows 10 or later
 - CMake 3.15 or higher
-- Visual Studio 2019 or later
+- Visual Studio 2022 or later with C++20 support
 - CEF binaries (see Configuration)
 
 #### Build Steps
@@ -277,15 +277,69 @@ view:close()
    ```bash
    mkdir build
    cd build
-   cmake ..
+   cmake .. -A Win32
    cmake --build . --config Release
    ```
 
 3. **Deployment:**
    - Built files are deployed to `build/deploy/`
    - Plugin file: `build/deploy/Release/luacef.asi`
-   - Host: `build/deploy/Release/luacef/LuaCEFHost.exe`
-   - Subprocess: `build/deploy/Release/luacef/LuaCEFSubprocess.exe`
+   - Host: `build/deploy/Release/luacef/cef-host.exe`
+   - Subprocess: `build/deploy/Release/luacef/cef-subprocess.exe`
+   - Lua module: `build/deploy/Release/moonloader/lib/luacef.lua`
+   - Installer: `build/deploy/Release/Install-LuaCEF.cmd`
+
+### Installation and Host Location
+
+Close the game and run `Install-LuaCEF.cmd` from the unpacked release. Select the
+folder containing `gta_sa.exe`. The installer copies `luacef.asi` and the Lua
+module to the game, installs the shared CEF runtime in
+`%LOCALAPPDATA%\LuaCEF\runtime`, and sets the **user** environment variable
+`LUACEF_HOST_PATH` to that directory. Administrator rights are not required for
+the default runtime location; the game folder must be writable. An ASI loader
+and MoonLoader must already be installed. Restart the game launcher after installation
+so it inherits the updated environment.
+
+The plugin searches for a regular `cef-host.exe` file in this order:
+
+1. The directory in `LUACEF_HOST_PATH` (the directory containing the executable,
+   not the executable path itself).
+2. `<game directory>\luacef\cef-host.exe`.
+3. `<game directory>\cef-host.exe`.
+
+A missing/empty variable or a directory without the host automatically falls back
+to the game. The game directory is determined from the running executable,
+independently of the launcher's working directory. The subprocess, CEF DLLs,
+resources and `locales` must be placed alongside the selected host. Caches and
+logs remain in `<game directory>\luacef` and are separate for each game installation.
+
+For a portable installation or a custom shared runtime location, run PowerShell
+from the release directory:
+
+```powershell
+.\Install-LuaCEF.ps1 -GamePath 'D:\Games\GTA San Andreas' -Portable
+.\Install-LuaCEF.ps1 -GamePath 'D:\Games\GTA San Andreas' -RuntimePath 'D:\LuaCEF\runtime'
+```
+
+`-Portable` leaves environment variables unchanged; an existing valid
+`LUACEF_HOST_PATH` still takes priority. To configure a shared runtime manually:
+
+```powershell
+[Environment]::SetEnvironmentVariable('LUACEF_HOST_PATH', 'D:\LuaCEF\runtime', 'User')
+```
+
+When running the installer from the repository, pass
+`-SourcePath '.\build\deploy\Release'`. `-WhatIf` validates the package and previews
+installation without copying files or changing the environment.
+
+The path lookup tests can run without CEF or the game SDKs:
+
+```powershell
+cmake -S tests/native -B build/path-tests
+cmake --build build/path-tests --config Release
+ctest --test-dir build/path-tests -C Release --output-on-failure
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/Install-LuaCEF.Tests.ps1
+```
 
 ### 📦 Directory Structure
 
@@ -680,7 +734,7 @@ view:close()
 
 - Windows 10 или более поздняя версия
 - CMake 3.15 или выше
-- Visual Studio 2019 или выше
+- Visual Studio 2022 или выше с поддержкой C++20
 - Бинарные файлы CEF (см. Конфигурация)
 
 #### Шаги сборки
@@ -694,15 +748,67 @@ view:close()
    ```bash
    mkdir build
    cd build
-   cmake ..
+   cmake .. -A Win32
    cmake --build . --config Release
    ```
 
 3. **Развёртывание:**
    - Собранные файлы располагаются в `build/deploy/`
    - Файл плагина: `build/deploy/Release/luacef.asi`
-   - Host: `build/deploy/Release/luacef/LuaCEFHost.exe`
-   - Subprocess: `build/deploy/Release/luacef/LuaCEFSubprocess.exe`
+   - Host: `build/deploy/Release/luacef/cef-host.exe`
+   - Subprocess: `build/deploy/Release/luacef/cef-subprocess.exe`
+   - Lua-модуль: `build/deploy/Release/moonloader/lib/luacef.lua`
+   - Установщик: `build/deploy/Release/Install-LuaCEF.cmd`
+
+### Установка и поиск хоста
+
+Закройте игру и запустите `Install-LuaCEF.cmd` из распакованного релиза. Выберите
+папку с `gta_sa.exe`. Установщик скопирует `luacef.asi` и Lua-модуль в игру,
+разместит общий CEF в `%LOCALAPPDATA%\LuaCEF\runtime` и запишет этот каталог
+в **пользовательскую** переменную среды `LUACEF_HOST_PATH`. Для стандартного
+каталога CEF права администратора не нужны; папка игры должна быть доступна
+для записи. ASI Loader и MoonLoader должны быть установлены заранее.
+После установки перезапустите лаунчер, чтобы игра получила обновлённую переменную.
+
+Плагин ищет файл `cef-host.exe` в следующем порядке:
+
+1. Каталог из `LUACEF_HOST_PATH`: указывается папка с хостом, а не путь к `.exe`.
+2. `<папка игры>\luacef\cef-host.exe`.
+3. `<папка игры>\cef-host.exe`.
+
+Если переменная отсутствует, пуста или в её каталоге нет файла хоста, поиск
+автоматически продолжается в игре. Папка игры определяется по запущенному
+исполняемому файлу и не зависит от рабочей папки лаунчера. Рядом с выбранным
+хостом должны лежать subprocess, DLL CEF, ресурсы и каталог `locales`.
+Кэш и логи сохраняются отдельно для каждой игры в `<папка игры>\luacef`.
+
+Для переносимой установки или другого расположения общего CEF запустите
+PowerShell из папки релиза:
+
+```powershell
+.\Install-LuaCEF.ps1 -GamePath 'D:\Games\GTA San Andreas' -Portable
+.\Install-LuaCEF.ps1 -GamePath 'D:\Games\GTA San Andreas' -RuntimePath 'D:\LuaCEF\runtime'
+```
+
+Режим `-Portable` не меняет переменные среды; уже заданный корректный
+`LUACEF_HOST_PATH` сохраняет приоритет. Для ручной настройки общего CEF:
+
+```powershell
+[Environment]::SetEnvironmentVariable('LUACEF_HOST_PATH', 'D:\LuaCEF\runtime', 'User')
+```
+
+При запуске установщика из репозитория добавьте
+`-SourcePath '.\build\deploy\Release'`. Параметр `-WhatIf` проверяет комплект
+файлов и показывает план установки без копирования и изменения переменных.
+
+Проверки поиска хоста запускаются без CEF и SDK игры:
+
+```powershell
+cmake -S tests/native -B build/path-tests
+cmake --build build/path-tests --config Release
+ctest --test-dir build/path-tests -C Release --output-on-failure
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/Install-LuaCEF.Tests.ps1
+```
 
 ### 📦 Структура проекта
 

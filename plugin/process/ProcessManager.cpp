@@ -1,12 +1,9 @@
 #include "ProcessManager.hpp"
 
-#include <filesystem>
 #include <format>
-#include <iostream>
-
-#include <TlHelp32.h>
 
 #include "Logger.hpp"
+#include "RuntimePaths.hpp"
 
 ProcessManager::ProcessManager() = default;
 
@@ -24,18 +21,20 @@ bool ProcessManager::Start()
         return true;
     }
 
-    subprocess_path_ = GetSubprocessPath();
+    const auto gameDirectory = luacef::paths::ExecutableDirectory();
+    const auto hostPath = luacef::paths::FindHost(luacef::paths::HostEnvironmentDirectory(), gameDirectory);
 
-    if (subprocess_path_.empty())
+    if (hostPath.empty())
     {
-        Logger::Instance().Log("Failed to find subprocess executable");
+        Logger::Instance().Log("cef-host.exe not found in LUACEF_HOST_PATH or the game directory");
 
         return false;
     }
 
-    Logger::Instance().Log("Subprocess path: {}", subprocess_path_);
+    const auto hostPathUtf8 = hostPath.u8string();
+    Logger::Instance().Log("Host path: {}", std::string(hostPathUtf8.begin(), hostPathUtf8.end()));
 
-    STARTUPINFOA startup_info{};
+    STARTUPINFOW startup_info{};
     startup_info.cb = sizeof(startup_info);
     startup_info.dwFlags = STARTF_USESHOWWINDOW;
 #ifdef NDEBUG
@@ -45,17 +44,15 @@ bool ProcessManager::Start()
     PROCESS_INFORMATION process_info{};
 
     const auto parentPid = GetCurrentProcessId();
-    std::string cmdLine = std::format("\"{}\" --parent-pid={}", subprocess_path_, parentPid);
+    auto cmdLine = std::format(L"\"{}\" --parent-pid={}", hostPath.native(), parentPid);
 
-    if (!CreateProcessA(nullptr, cmdLine.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr,
-                        &startup_info, &process_info))
+    if (!CreateProcessW(hostPath.c_str(), cmdLine.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr,
+                        gameDirectory.empty() ? nullptr : gameDirectory.c_str(), &startup_info, &process_info))
     {
         Logger::Instance().Log("CreateProcess failed: {}", GetLastError());
 
         return false;
     }
-
-    Logger::Instance().Log("Subprocess created (PID: {}), cmdline: {}", process_id_.load(), cmdLine);
 
     process_handle_ = process_info.hProcess;
     process_id_ = process_info.dwProcessId;
@@ -121,25 +118,6 @@ bool ProcessManager::IsRunning() const
         return false;
 
     return exit_code == STILL_ACTIVE;
-}
-
-std::string ProcessManager::GetSubprocessPath()
-{
-    // Искать cef-subprocess.exe в текущей директории или в bin/Release
-    std::vector<std::string> possible_paths = {
-        "luacef/cef-host.exe",
-    };
-
-    for (const auto& path : possible_paths)
-    {
-        if (std::filesystem::exists(path))
-        {
-            Logger::Instance().Log("Found subprocess at: {}", path);
-            return std::filesystem::absolute(path).string();
-        }
-    }
-
-    return "";
 }
 
 void ProcessManager::MonitorThreadProc()

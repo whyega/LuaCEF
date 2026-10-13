@@ -7,13 +7,14 @@
 #include <plugin.h>
 
 #include "Logger.hpp"
+#include "RuntimePaths.hpp"
 #include "render/RenderManager.hpp"
 
 #include "utils/samp_utils.hpp"
 
 void Plugin::OnAttach(void* handle)
 {
-    Logger::Instance().SetLogFilePath(std::filesystem::current_path() / "luacef" / "plugin.log");
+    Logger::Instance().SetLogFilePath(luacef::paths::ExecutableDirectory() / L"luacef" / L"plugin.log");
 
     Logger::Instance().Log("Plugin attached with handle: {}", handle);
 

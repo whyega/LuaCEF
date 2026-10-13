@@ -57,7 +57,7 @@ target_include_directories(LuaCEFPlugin PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_compile_features(LuaCEFPlugin PRIVATE cxx_std_23)
+target_compile_features(LuaCEFPlugin PRIVATE cxx_std_20)
 
 set_target_properties(LuaCEFPlugin PROPERTIES
     SUFFIX .asi
